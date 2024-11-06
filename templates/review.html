@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        textarea {
+            width: 95%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        input[type="date"] {
+            width: 95%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .button-container {
+            display: flex; /* Use flexbox to arrange buttons */
+            justify-content: space-between; /* Space between the buttons */
+            margin-top: 10px; /* Space above the button container */
+        }
+
+        input[type="submit"], .home-button {
+            background-color: #398AC0;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1; /* Make buttons take equal space */
+            margin-right: 5px; /* Space between buttons */
+        }
+
+        input[type="submit"]:hover, .home-button:hover {
+            background-color: #F9B317;
+        }
+
+        .home-button {
+            margin-right: 0; /* Remove right margin from the last button */
+        }
+
+        @media (max-width: 600px) {
+            form {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Submit a Review</h1>
+    <form action="/predict" method="post">
+        <label for="review">Review:</label>
+        <textarea id="review" name="review" rows="4" cols="50" required></textarea>
+        
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date" required>
+
+        <!-- Button container for Submit and Home buttons -->
+        <div class="button-container">
+            <input type="submit" value="Submit">
+            <button class="home-button" onclick="location.href='/'">Home</button>
+        </div>
+    </form>
+</body>
+</html>
