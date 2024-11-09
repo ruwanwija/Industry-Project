@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, redirect, url_for
 import pickle
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -9,38 +9,39 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+from datetime import datetime
+from calendar import monthrange
 
 app = Flask(__name__)
 
-# Set NLTK Data Path
-os.environ['NLTK_DATA'] = 'C:\\Users\\Ruwan Wijayasundara\\AppData\\Roaming\\nltk_data'
-
-# Download the required resources for NLTK
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
+# Configure NLTK path and download resources if needed
+nltk_data_path = 'C:\\Users\\Ruwan Wijayasundara\\AppData\\Roaming\\nltk_data'
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+nltk.data.path.append(nltk_data_path)
+nltk.download('punkt', download_dir=nltk_data_path)
+nltk.download('stopwords', download_dir=nltk_data_path)
+nltk.download('wordnet', download_dir=nltk_data_path)
 
 # Load the pre-trained SVM model and vectorizer
+model, vectorizer = None, None
 try:
     with open('svm_model.pkl', 'rb') as model_file:
         model = pickle.load(model_file)
     with open('vectorizer.pkl', 'rb') as vec_file:
         vectorizer = pickle.load(vec_file)
-    print("Model and vectorizer loaded successfully.")
-except Exception as e:
-    print(f"Error loading model or vectorizer: {e}")
+except FileNotFoundError as e:
+    print(f"Error loading model/vectorizer: {e}")
 
-# Initialize Firebase Admin SDK if not already initialized
-if not firebase_admin._apps:
-    try:
+# Initialize Firebase Admin SDK
+try:
+    if not firebase_admin._apps:
         cred = credentials.Certificate('serviceAccountKey.json')
         firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        print("Firebase initialized successfully.")
-    except Exception as e:
-        print(f"Error initializing Firebase: {e}")
+    db = firestore.client()
+except Exception as e:
+    print(f"Error initializing Firebase: {e}")
 
-# Text preprocessing function
 def preprocess_text(text):
     text = text.lower()
     text = re.sub(r'[^\w\s]', '', text)
@@ -48,44 +49,51 @@ def preprocess_text(text):
     tokens = [word for word in tokens if word not in stopwords.words('english')]
     lemmatizer = WordNetLemmatizer()
     tokens = [lemmatizer.lemmatize(word) for word in tokens]
-    print(f"Processed text: {tokens}")
     return ' '.join(tokens)
 
-# Home route
+def get_month_end_date(year_month):
+    year, month = map(int, year_month.split("-"))
+    last_day = monthrange(year, month)[1]
+    return f"{year}-{month:02d}-{last_day}"
+
 @app.route('/')
 def home_page():
     return render_template('home.html')
 
-# Insert review route
 @app.route('/insert')
-def home():
+def insert_page():
     return render_template('review.html')
 
-# Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
+    if model is None or vectorizer is None:
+        return jsonify({"error": "Model or vectorizer not loaded."}), 500
+
+    review = request.form.get('review', '')
+    date = request.form.get('date', '')
+
+    # Validate date format (YYYY-MM-DD) for Firestore consistency
     try:
-        review = request.form['review']
-        date = request.form['date']
-        print(f"Received review: {review} with date: {date}")
+        datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
-        # Preprocess the review text
-        processed_review = preprocess_text(review)
-        review_vector = vectorizer.transform([processed_review])
+    processed_review = preprocess_text(review)
+    review_vector = vectorizer.transform([processed_review])
 
-        # Get prediction probabilities
-        if hasattr(model, "predict_proba"):
-            probabilities = model.predict_proba(review_vector)[0]
-        else:
-            return jsonify({"error": "Model does not support probability predictions."}), 500
+    # Get prediction probabilities and labels
+    try:
+        probabilities = model.predict_proba(review_vector)[0]
+    except AttributeError:
+        return jsonify({"error": "Model does not support probability prediction."}), 500
 
-        labels = ["Location", "Food Quality", "Value for Money", "Comfort", "Staff Behavior"]
-        probability_dict = {labels[i]: probabilities[i] for i in range(len(labels))}
-        highest_label = max(probability_dict, key=probability_dict.get)
-        highest_probability = probability_dict[highest_label]
-        print(f"Prediction result - Label: {highest_label}, Probability: {highest_probability}")
+    labels = ["Location", "Food Quality", "Value for Money", "Comfort", "Staff Behavior"]
+    probability_dict = {labels[i]: probabilities[i] for i in range(len(labels))}
+    highest_label = max(probability_dict, key=probability_dict.get)
+    highest_probability = probability_dict[highest_label]
 
-        # Save data to Firestore
+    # Add to Firestore
+    try:
         db.collection('reviews').add({
             'review': review,
             'date': date,
@@ -93,55 +101,41 @@ def predict():
             'highest_probability': highest_probability,
             'probabilities': probability_dict
         })
-        print("Data saved to Firebase.")
-
-        return jsonify({
-            'highest_label': highest_label,
-            'highest_probability': highest_probability,
-            'probabilities': probability_dict
-        })
     except Exception as e:
-        print(f"Error during prediction: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Failed to save to Firestore: {e}"}), 500
 
-# Visualization route
+    # Redirect to success page instead of returning JSON
+    return redirect(url_for('success_page'))
+
+@app.route('/success')
+def success_page():
+    return render_template('success.html')
+
 @app.route('/visualize')
 def visualize():
     return render_template('visualize.html')
 
-# Route to fetch review data by month or all data
 @app.route('/get_data', methods=['GET'])
 def get_data():
-    try:
-        month = request.args.get('month', 'all')
-        print(f"Fetching data for month: {month}")
-        label_counts = {
-            "Location": 0, 
-            "Food Quality": 0, 
-            "Value for Money": 0, 
-            "Comfort": 0, 
-            "Staff Behavior": 0
-        }
+    month = request.args.get('month', 'all')
+    label_counts = {label: 0 for label in ["Location", "Food Quality", "Value for Money", "Comfort", "Staff Behavior"]}
 
-        # Query Firestore based on the specified month or get all data
+    try:
         if month == 'all':
             docs = db.collection('reviews').stream()
         else:
             start_date = f"{month}-01"
-            end_date = f"{month}-31"
+            end_date = get_month_end_date(month)
             docs = db.collection('reviews').where('date', '>=', start_date).where('date', '<=', end_date).stream()
 
-        # Count labels for the specified time period
         for doc in docs:
             highest_label = doc.to_dict().get('highest_label')
             if highest_label in label_counts:
                 label_counts[highest_label] += 1
-
-        print(f"Label counts for the specified period: {label_counts}")
-        return jsonify(label_counts)
     except Exception as e:
-        print(f"Error fetching data from Firestore: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Failed to retrieve data from Firestore: {e}"}), 500
+
+    return jsonify(label_counts)
 
 if __name__ == '__main__':
     app.run(debug=True)

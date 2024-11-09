@@ -5,96 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Submission</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+        /* Global Styles */
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f8ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             padding: 20px;
+            color: #333;
+            flex-direction: column;
         }
 
         h1 {
             text-align: center;
             color: #333;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-in;
         }
 
+        /* Form Container Styles */
         form {
             max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
+            width: 100%;
+            padding: 25px;
             background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.5s ease;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: bold;
             color: #555;
+            font-size: 1rem;
         }
 
-        textarea {
-            width: 95%;
-            padding: 10px;
+        textarea, input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
         }
 
-        input[type="date"] {
-            width: 95%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 15px;
+        textarea:focus, input[type="date"]:focus {
+            border-color: #398AC0;
+            outline: none;
+            box-shadow: 0 0 8px rgba(57, 138, 192, 0.2);
         }
 
+        /* Button Container */
         .button-container {
-            display: flex; /* Use flexbox to arrange buttons */
-            justify-content: space-between; /* Space between the buttons */
-            margin-top: 10px; /* Space above the button container */
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
         }
 
         input[type="submit"], .home-button {
             background-color: #398AC0;
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
+            padding: 12px 15px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 16px;
-            flex: 1; /* Make buttons take equal space */
-            margin-right: 5px; /* Space between buttons */
+            font-size: 1rem;
+            flex: 1;
+            transition: background-color 0.3s, transform 0.3s;
         }
 
         input[type="submit"]:hover, .home-button:hover {
             background-color: #F9B317;
+            transform: translateY(-2px);
         }
 
         .home-button {
-            margin-right: 0; /* Remove right margin from the last button */
+            margin-right: 0;
+            text-align: center;
         }
 
+        /* Responsive Adjustments */
         @media (max-width: 600px) {
             form {
                 width: 90%;
             }
+
+            .button-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
     </style>
 </head>
 <body>
     <h1>Submit a Review</h1>
+
     <form action="/predict" method="post">
         <label for="review">Review:</label>
-        <textarea id="review" name="review" rows="4" cols="50" required></textarea>
+        <textarea id="review" name="review" rows="4" required></textarea>
         
         <label for="date">Date:</label>
         <input type="date" id="date" name="date" required>
 
-        <!-- Button container for Submit and Home buttons -->
         <div class="button-container">
             <input type="submit" value="Submit">
-            <button class="home-button" onclick="location.href='/'">Home</button>
+            <button type="button" class="home-button" onclick="location.href='/'">Home</button>
         </div>
     </form>
 </body>
